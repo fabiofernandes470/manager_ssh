@@ -5,6 +5,7 @@ Conexão via ssh com Netmiko e  ssh-pass
 Estrutura do diretorio do projeto:
 
 projeto/
+
 │
 ├── comandos/                     # Pasta onde estarão os arquivos de comandos
 
@@ -23,6 +24,7 @@ projeto/
 │        │   └── ...              # Outros logs relacionados ao sshpass
 
 │        └── ...                  # Outros tipos de logs, se necessário
+
 │
 ├── dispositivos.yaml             # Arquivo YAML com as configurações dos dispositivos (hosts, usernames, etc.)
 
