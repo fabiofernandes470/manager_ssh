@@ -11,6 +11,6 @@ devices:
   
   - device_type: ssh
     host: 172.16.200.10
-    username: fabio
-    password: $$up0rt3
+    username: admin  
+    password: P@SSw0rd
     port: 22
