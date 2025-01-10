@@ -1,0 +1,6 @@
+show gpon onu summary
+show inventory
+show version
+show cpu
+show processes
+exit
