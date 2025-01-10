@@ -1,0 +1,16 @@
+devices:
+  #- device_type: cisco_ios
+  #  host: 192.168.1.1
+  #  username: admin
+  #  password: senha123
+  #  secret: enable123  # Para comandos privilegiados
+  #- device_type: cisco_nxos
+  #  host: 172.16.4.37
+  # username: fabio
+  # password: $$up0rt3
+  
+  - device_type: ssh
+    host: 172.16.200.10
+    username: fabio
+    password: $$up0rt3
+    port: 22
