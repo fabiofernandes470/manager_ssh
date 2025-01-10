@@ -7,7 +7,7 @@ Estrutura do diretorio do projeto:
 projeto/
 
 │
-├── comandos/                     # Pasta onde estarão os arquivos de comandos
+├ comandos/                     # Pasta onde estarão os arquivos de comandos
 
 │    ├── comando1.txt             # Exemplo de comando de configuração de dispositivos
 
@@ -15,7 +15,7 @@ projeto/
 
 │    └── ...                      # Outros arquivos de comandos conforme necessário
 │
-├─ log/                           # Pasta onde serão gerados os logs de execução
+├ log/                           # Pasta onde serão gerados os logs de execução
 
 │    ├── sshpass/                 # Pasta específica para logs do sshpass
 
@@ -26,13 +26,14 @@ projeto/
 │        └── ...                  # Outros tipos de logs, se necessário
 
 │
-├── dispositivos.yaml             # Arquivo YAML com as configurações dos dispositivos (hosts, usernames, etc.)
+├ dispositivos.yaml             # Arquivo YAML com as configurações dos dispositivos (hosts, usernames, etc.)
 
 │
-└── connect_ssh.py                # O script Python com o código fornecido.
+└ connect_ssh.py                # O script Python com o código fornecido.
 
 
 Explicação da Estrutura:
+
 comandos/:
 
 Esta pasta contém arquivos de texto (.txt) com os comandos que você deseja executar. O código irá ler esses arquivos para usar os comandos de configuração conforme selecionado.
