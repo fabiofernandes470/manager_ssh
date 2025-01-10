@@ -9,15 +9,15 @@ projeto/
 
 ├── comandos/                    # Pasta onde estarão os arquivos de comandos
 
-│          ├── comando1.txt             # Exemplo de comando de configuração de dispositivos
+│  ├── comando1.txt             # Exemplo de comando de configuração de dispositivos
 
-│          ├── comando2.txt             # Outro arquivo de comandos, se necessário
+│  ├── comando2.txt             # Outro arquivo de comandos, se necessário
 
-│          └── ...                      # Outros arquivos de comandos conforme necessário
+│  └── ...                      # Outros arquivos de comandos conforme necessário
 
 │
 
-├── log/                         # Pasta onde serão gerados os logs de execução
+├─ log/                         # Pasta onde serão gerados os logs de execução
 
 │          ├── sshpass/                 # Pasta específica para logs do sshpass
 
