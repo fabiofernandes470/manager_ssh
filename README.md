@@ -19,4 +19,4 @@ projeto/
 │
 ├── dispositivos.yaml            # Arquivo YAML com as configurações dos dispositivos (hosts, usernames, etc.)
 │
-└── connect_ssh.py                # O script Python com o código fornecido
+└── connect_ssh.py                # O script Python com o código fornecido.
