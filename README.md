@@ -1,22 +1,29 @@
-Descrição
+# Automação de Configuração de Dispositivos de Rede
+
+## Descrição
+
 Este script em Python é uma ferramenta automatizada para gerenciar dispositivos de rede, executar comandos de configuração e registrar as saídas de execução. A aplicação pode ser configurada para trabalhar com dispositivos via SSH ou utilizando o Netmiko, um módulo para automação de rede. O sistema também suporta a execução de comandos a partir de arquivos YAML ou arquivos de texto. Ele oferece uma interface de menu interativo para facilitar a escolha de comandos e dispositivos.
 
-Funcionalidades
-Execução de comandos via SSH: Conecte-se aos dispositivos e execute comandos através do sshpass e ssh.
-Execução de comandos via Netmiko: Utiliza o Netmiko para configurar dispositivos de rede de forma programática.
-Gerenciamento de dispositivos: Carregue os dispositivos a partir de um arquivo YAML.
-Registro de log: As saídas das execuções são registradas em arquivos de log.
-Menu interativo: Oferece um menu para escolher as configurações de VLAN, Flow, ou executar comandos via arquivo.
-Execução em múltiplos dispositivos simultaneamente: Utiliza ThreadPoolExecutor para executar comandos em vários dispositivos ao mesmo tempo.
-Estrutura do Projeto
-text
-Copiar código
+## Funcionalidades
+
+- **Execução de comandos via SSH**: Conecte-se aos dispositivos e execute comandos através do `sshpass` e `ssh`.
+- **Execução de comandos via Netmiko**: Utiliza o Netmiko para configurar dispositivos de rede de forma programática.
+- **Gerenciamento de dispositivos**: Carregue os dispositivos a partir de um arquivo YAML.
+- **Registro de log**: As saídas das execuções são registradas em arquivos de log.
+- **Menu interativo**: Oferece um menu para escolher as configurações de VLAN, Flow, ou executar comandos via arquivo.
+- **Execução em múltiplos dispositivos simultaneamente**: Utiliza `ThreadPoolExecutor` para executar comandos em vários dispositivos ao mesmo tempo.
+
+## Estrutura do Projeto
+
+```text
 ├── comandos
 │   └── arquivo_comandos.txt         # Arquivos de comandos em texto
 ├── dispositivos.yaml               # Arquivo YAML com a configuração dos dispositivos
 ├── log                             # Diretório de logs
 │   └── ssh_executions.log          # Arquivo de log das execuções SSH
 └── script.py                       # O script principal
+          # O script principal
+
 Requisitos
 Python 3.6 ou superior
 Pacotes necessários:
