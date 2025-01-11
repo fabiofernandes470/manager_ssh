@@ -17,7 +17,7 @@ Este script em Python é uma ferramenta automatizada para gerenciar dispositivos
 
 ```text
 ├── comandos
-│   └── arquivo_comandos.txt         # Arquivos de comandos em texto
+│   └── arquivo_comandos.txt        # Arquivos de comandos em texto
 ├── dispositivos.yaml               # Arquivo YAML com a configuração dos dispositivos
 ├── log                             # Diretório de logs
 │   └── ssh_executions.log          # Arquivo de log das execuções SSH
@@ -50,7 +50,7 @@ devices:
     port: 22
     username: admin
     password: senha
-    device_type: cisco_ios
+    device_type: ssh
 Executando o Script: Após configurar o arquivo YAML, execute o script com o seguinte comando:
 
 bash
