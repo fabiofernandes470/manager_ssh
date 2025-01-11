@@ -3,67 +3,121 @@ import subprocess
 import logging
 import yaml
 from netmiko import ConnectHandler
+from concurrent.futures import ThreadPoolExecutor
 
 # Configuração de logging
-log_dir = "log/sshpass"
-os.makedirs(log_dir, exist_ok=True)  # Cria a pasta se não existir
-log_file = os.path.join(log_dir, "ssh_executions.log")
+class Logger:
+    def __init__(self, log_dir="log", log_file="ssh_executions.log"):
+        self.log_dir = log_dir
+        os.makedirs(self.log_dir, exist_ok=True)  # Cria a pasta se não existir
+        self.log_file = os.path.join(self.log_dir, log_file)
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.INFO)
 
-file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.INFO)
-file_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(file_format)
-logger.addHandler(file_handler)
+        file_handler = logging.FileHandler(self.log_file)
+        file_handler.setLevel(logging.INFO)
+        file_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(file_format)
+        self.logger.addHandler(file_handler)
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(file_format)
-logger.addHandler(console_handler)
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(file_format)
+        self.logger.addHandler(console_handler)
 
-# Função para executar comandos via sshpass
-def executar_comandos_ssh(ip, porta, usuario, senha, comandos, arquivo_saida):
-    """Executa comandos em um dispositivo remoto via SSH usando sshpass."""
-    comando_ssh = f"sshpass -p '{senha}' ssh -o StrictHostKeyChecking=no -p {porta} -T {usuario}@{ip}"
-    with open(arquivo_saida, 'w') as f:
-        process = subprocess.Popen(comando_ssh, shell=True, stdin=subprocess.PIPE, stdout=f, stderr=subprocess.STDOUT)
-        process.communicate(input=comandos.encode())
-        process.wait()
+    def get_logger(self):
+        return self.logger
 
-# Função para executar comandos via Netmiko
-def executar_comandos_netmiko(dispositivo, comandos, arquivo_saida):
-    """Executa comandos em um dispositivo remoto via Netmiko."""
-    try:
-        with ConnectHandler(**dispositivo) as conn:
-            output = conn.send_config_set(comandos.splitlines())
-            with open(arquivo_saida, 'w') as f:
-                f.write(output)
-    except Exception as e:
-        logger.error(f"Erro ao executar comandos no dispositivo {dispositivo['host']}: {str(e)}")
-        print(f"Erro ao executar comandos no dispositivo {dispositivo['host']}: {str(e)}")
+# Classe para gerenciamento de dispositivos
+class Dispositivo:
+    def __init__(self, host, port, username, password, device_type):
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.device_type = device_type
 
-# Função para carregar dispositivos do arquivo YAML
-def carregar_dispositivos_yaml(arquivo_yaml):
-    try:
-        with open(arquivo_yaml, 'r') as f:
-            data = yaml.safe_load(f)
-        return data.get('devices', [])
-    except Exception as e:
-        logger.error(f"Erro ao carregar o arquivo YAML {arquivo_yaml}: {str(e)}")
-        return []
+    def executar_comandos_ssh(self, comandos, arquivo_saida):
+        comando_ssh = [
+            "sshpass", "-p", self.password,
+            "ssh", "-o", "StrictHostKeyChecking=no",
+            "-p", str(self.port), "-T", f"{self.username}@{self.host}"
+        ]
+        with open(arquivo_saida, 'w') as f:
+            process = subprocess.Popen(comando_ssh, stdin=subprocess.PIPE, stdout=f, stderr=subprocess.STDOUT)
+            process.communicate(input=comandos.encode())
+            process.wait()
 
-# Função para listar arquivos de comandos
-def listar_arquivos_comandos(diretorio):
-    return [os.path.join(diretorio, f) for f in os.listdir(diretorio) if f.endswith('.txt')]
+    def executar_comandos_netmiko(self, comandos, arquivo_saida):
+        dispositivo_netmiko = {
+            "device_type": self.device_type,
+            "host": self.host,
+            "username": self.username,
+            "password": self.password,
+            "port": self.port,
+        }
+        try:
+            with ConnectHandler(**dispositivo_netmiko) as conn:
+                output = conn.send_config_set(comandos.splitlines())
+                with open(arquivo_saida, 'w') as f:
+                    f.write(output)
+        except Exception as e:
+            logger.error(f"Erro ao executar comandos no dispositivo {self.host}: {str(e)}")
 
-# Função para gerar comandos de VLAN para o uplink
-def gerar_comandos_vlan_uplink(vlan_id, interface):
-    """Gera comandos para configurar a VLAN no uplink da OLT."""
-    comandos = f"""
+# Classe para manipulação de arquivos YAML
+class GerenciadorYAML:
+    @staticmethod
+    def carregar_dispositivos(arquivo_yaml):
+        try:
+            with open(arquivo_yaml, 'r') as f:
+                data = yaml.safe_load(f)
+            return [
+                Dispositivo(
+                    host=d.get('host'),
+                    port=d.get('port', 22),
+                    username=d.get('username'),
+                    password=d.get('password'),
+                    device_type=d.get('device_type', 'cisco_ios')
+                ) for d in data.get('devices', [])
+            ]
+        except Exception as e:
+            logger.error(f"Erro ao carregar o arquivo YAML {arquivo_yaml}: {str(e)}")
+            return []
+
+# Classe para gerenciamento de comandos
+class GerenciadorComandos:
+    @staticmethod
+    def listar_arquivos(diretorio):
+        return [os.path.join(diretorio, f) for f in os.listdir(diretorio) if f.endswith('.txt')]
+
+    @staticmethod
+    def escolher_arquivo(arquivos_comandos):
+        if not arquivos_comandos:
+            logger.error("Nenhum arquivo de comando encontrado.")
+            print("Nenhum arquivo de comando encontrado.")
+            return None
+
+        print("Escolha o arquivo de comando:")
+        for i, arquivo in enumerate(arquivos_comandos, 1):
+            print(f"{i}. {os.path.basename(arquivo)}")
+
+        while True:
+            try:
+                escolha = int(input("Digite o número do arquivo que você deseja usar: "))
+                if 1 <= escolha <= len(arquivos_comandos):
+                    return arquivos_comandos[escolha - 1]
+                else:
+                    print("Escolha inválida. Tente novamente.")
+            except ValueError:
+                print("Entrada inválida. Por favor, insira um número.")
+
+# Funções auxiliares para gerar comandos
+class GeradorComandos:
+    @staticmethod
+    def gerar_comandos_vlan_uplink(vlan_id, interface):
+        return f"""
 conf t
-vlan database
 vlan {vlan_id}
 !
 interface {interface}
@@ -72,20 +126,18 @@ end
 copy r s
 exit
 """
-    return comandos
 
-# Função para gerar comandos predefinidos para o perfil de flow
-def gerar_comandos_flow(nome_do_flow, vlan_internet, vlan_gerencia):
-    """Gera comandos para configurar o perfil de flow na OLT."""
-    comandos = f"""
+    @staticmethod
+    def gerar_comandos_flow(nome_do_flow, vlan_internet, vlan_gerencia):
+        return f"""
 conf t
 gpon profile flow {nome_do_flow}
 add flow
-{nome_do_flow}-1 encription disable
+{nome_do_flow}-1 encryption disable
 {nome_do_flow}-1 flow-type pbmp 1
 {nome_do_flow}-1 vlan {vlan_internet} service Internet
 add flow
-{nome_do_flow}-2 encription disable
+{nome_do_flow}-2 encryption disable
 {nome_do_flow}-2 flow-type iphost 1
 {nome_do_flow}-2 vlan {vlan_gerencia} service Gerencia
 !
@@ -97,87 +149,103 @@ show gpon profile vlan-translation {nome_do_flow}
 copy r s
 exit
 """
-    return comandos
 
-# Função para escolher um arquivo de comandos
-def escolher_arquivo_comando(arquivos_comandos):
-    """Permite ao usuário escolher um arquivo de comandos disponível."""
-    if not arquivos_comandos:
-        logger.error("Nenhum arquivo de comando encontrado.")
-        print("Nenhum arquivo de comando encontrado.")
-        return None
-    
-    print("Escolha o arquivo de comando:")
-    for i, arquivo in enumerate(arquivos_comandos, 1):
-        print(f"{i}. {os.path.basename(arquivo)}")
-    
-    while True:
-        try:
-            escolha = int(input("Digite o número do arquivo que você deseja usar: "))
-            if 1 <= escolha <= len(arquivos_comandos):
-                return arquivos_comandos[escolha - 1]
+    @staticmethod
+    def remover_flow(nome_do_flow):
+        return f"""
+conf t
+no gpon profile flow {nome_do_flow}
+show gpon profile flow {nome_do_flow}
+end
+copy r s
+exit
+"""
+
+# Classe de menu interativo
+class MenuInterativo:
+    def __init__(self, dispositivos):
+        self.dispositivos = dispositivos
+
+    def exibir_menu_principal(self):
+        print("\nMenu Principal:")
+        print("1. Configuração de Flow")
+        print("2. Configuração de VLAN")
+        print("3. Executar comandos via arquivo")
+        print("4. Sair")
+
+    def exibir_menu_flow(self):
+        print("\nMenu de Configuração de Flow:")
+        print("1. Criar Flow")
+        print("2. Remover Flow")
+        print("3. Voltar ao menu principal")
+
+    def executar(self):
+        while True:
+            self.exibir_menu_principal()
+            escolha_principal = input("Escolha uma opção: ")
+
+            if escolha_principal == '1':
+                # Submenu Configuração de Flow
+                while True:
+                    self.exibir_menu_flow()
+                    escolha_flow = input("Escolha uma opção: ")
+                    if escolha_flow == '1':
+                        nome_do_flow = input("Digite o nome do flow: ")
+                        vlan_internet = input("Digite a VLAN de Internet: ")
+                        vlan_gerencia = input("Digite a VLAN de Gerência: ")
+                        comandos = GeradorComandos.gerar_comandos_flow(nome_do_flow, vlan_internet, vlan_gerencia)
+                        self.executar_comandos_dispositivos(comandos)
+                    elif escolha_flow == '2':
+                        nome_do_flow = input("Digite o nome do flow a ser removido: ")
+                        comandos = GeradorComandos.remover_flow(nome_do_flow)
+                        self.executar_comandos_dispositivos(comandos)
+                    elif escolha_flow == '3':
+                        break
+                    else:
+                        print("Opção inválida. Tente novamente.")
+
+            elif escolha_principal == '2':
+                vlan_id = input("Digite o ID da VLAN: ")
+                interface = input("Digite a interface: ")
+                comandos = GeradorComandos.gerar_comandos_vlan_uplink(vlan_id, interface)
+                self.executar_comandos_dispositivos(comandos)
+
+            elif escolha_principal == '3':
+                arquivos_comandos = GerenciadorComandos.listar_arquivos("comandos")
+                arquivo_comandos_escolhido = GerenciadorComandos.escolher_arquivo(arquivos_comandos)
+                if arquivo_comandos_escolhido:
+                    with open(arquivo_comandos_escolhido, 'r') as f:
+                        comandos = f.read()
+                    self.executar_comandos_dispositivos(comandos)
+
+            elif escolha_principal == '4':
+                print("Saindo...")
+                break
+
             else:
-                print("Escolha inválida. Tente novamente.")
-        except ValueError:
-            print("Entrada inválida. Por favor, insira um número.")
+                print("Opção inválida. Tente novamente.")
 
-# Configurações principais
+    def executar_comandos_dispositivos(self, comandos):
+        def processar_dispositivo(dispositivo):
+            arquivo_saida = os.path.join("log", f"saida_{dispositivo.host}_{dispositivo.port}.log")
+            if dispositivo.device_type == 'ssh':
+                logger.info(f"Executando comandos via sshpass em {dispositivo.host}.")
+                dispositivo.executar_comandos_ssh(comandos, arquivo_saida)
+            else:
+                logger.info(f"Executando comandos via Netmiko em {dispositivo.host}.")
+                dispositivo.executar_comandos_netmiko(comandos, arquivo_saida)
+
+        with ThreadPoolExecutor() as executor:
+            executor.map(processar_dispositivo, self.dispositivos)
+
+# Inicialização
+logger = Logger().get_logger()
 arquivo_yaml = "dispositivos.yaml"
-diretorio_comandos = "comandos"  # Diretório onde os arquivos de comandos estão localizados
+dispositivos = GerenciadorYAML.carregar_dispositivos(arquivo_yaml)
 
-# Carregar dispositivos do arquivo YAML
-dispositivos = carregar_dispositivos_yaml(arquivo_yaml)
-
-if not dispositivos:
-    logger.error(f"Nenhum dispositivo encontrado no arquivo YAML {arquivo_yaml}.")
-    print(f"Nenhum dispositivo encontrado no arquivo YAML.")
+if dispositivos:
+    menu = MenuInterativo(dispositivos)
+    menu.executar()
 else:
-    arquivos_comandos = listar_arquivos_comandos(diretorio_comandos)
-    comando_pronto = input("Deseja usar comandos predefinidos no script? (s/n): ").lower() == 's'
-    
-    if comando_pronto:
-        # Gerar comandos predefinidos
-        escolha_comando = input("Escolha o comando a ser gerado: \n1. Configurar Flow na OLT\n2. Configurar VLAN no uplink\nDigite o número: ")
-        
-        if escolha_comando == '1':
-            nome_do_flow = input("Digite o nome do flow: ")
-            vlan_internet = input("Digite a VLAN de Internet: ")
-            vlan_gerencia = input("Digite a VLAN de Gerência: ")
-            comandos = gerar_comandos_flow(nome_do_flow, vlan_internet, vlan_gerencia)
-        elif escolha_comando == '2':
-            vlan_id = input("Digite o ID da VLAN: ")
-            interface = input("Digite a interface (ex: 10giga-ethernet0/1): ")
-            comandos = gerar_comandos_vlan_uplink(vlan_id, interface)
-        else:
-            print("Opção inválida.")
-            comandos = ""
-    else:
-        # Selecionar arquivo de comandos
-        arquivo_comandos_escolhido = escolher_arquivo_comando(arquivos_comandos)
-        if arquivo_comandos_escolhido:
-            with open(arquivo_comandos_escolhido, 'r') as f:
-                comandos = f.read()
-
-    # Executar comandos nos dispositivos
-    for dispositivo in dispositivos:
-        ip = dispositivo.get('host')
-        porta = dispositivo.get('port', 22)
-        tipo = dispositivo.get('device_type')
-        usuario = dispositivo.get('username')
-        senha = dispositivo.get('password')
-
-        arquivo_saida = os.path.join(log_dir, f"saida_{ip}_{porta}.log")
-
-        if tipo == "ssh":
-            logger.info(f"Executando comandos via sshpass em {ip}.")
-            executar_comandos_ssh(ip, porta, usuario, senha, comandos, arquivo_saida)
-        else:
-            logger.info(f"Executando comandos via Netmiko em {ip}.")
-            dispositivo_netmiko = {
-                "device_type": tipo,
-                "host": ip,
-                "username": usuario,
-                "password": senha,
-                "port": porta,
-            }
-            executar_comandos_netmiko(dispositivo_netmiko, comandos, arquivo_saida)
+    logger.error("Nenhum dispositivo encontrado.")
+    print("Nenhum dispositivo encontrado.")
